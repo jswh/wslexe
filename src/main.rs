@@ -1,4 +1,5 @@
 use std::env;
+use std::path::Path;
 use std::process::{Command, Stdio};
 use std::io::{self, Write};
 use std::borrow::Cow;
@@ -70,11 +71,14 @@ fn use_interactive_shell() -> bool {
     true
 }
 
-
 fn main() {
     let mut cmd_args = Vec::new();
-    let mut git_args: Vec<String> = vec![String::from("git")];
+    let mut git_args: Vec<String> = vec![];
     let git_cmd: String;
+    let exe: String = env::args().next().unwrap();
+    let path = Path::new(&exe);
+    let file_stem = path.file_stem().unwrap().to_str().unwrap();
+    git_args.push(String::from(file_stem));
 
     // process git command arguments   
     git_args.extend(env::args().skip(1)
