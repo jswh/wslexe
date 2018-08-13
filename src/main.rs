@@ -55,7 +55,7 @@ fn shell_escape(arg: String) -> String {
 
 fn use_interactive_shell() -> bool {
     // check for explicit environment variable setting
-    if let Ok(interactive_flag) = env::var("WSLGIT_USE_INTERACTIVE_SHELL") {
+    if let Ok(interactive_flag) = env::var("WSL_USE_INTERACTIVE_SHELL") {
         if interactive_flag == "false" || interactive_flag == "0" {
             return false;
         }
@@ -73,30 +73,30 @@ fn use_interactive_shell() -> bool {
 
 fn main() {
     let mut cmd_args = Vec::new();
-    let mut git_args: Vec<String> = vec![];
-    let git_cmd: String;
+    let mut wsl_args: Vec<String> = vec![];
+    let wsl_cmd: String;
     let exe: String = env::args().next().unwrap();
     let path = Path::new(&exe);
     let file_stem = path.file_stem().unwrap().to_str().unwrap();
-    git_args.push(String::from(file_stem));
+    wsl_args.push(String::from(file_stem));
 
-    // process git command arguments   
-    git_args.extend(env::args().skip(1)
+    // process wsl command arguments   
+    wsl_args.extend(env::args().skip(1)
         .map(translate_path_to_unix)
         .map(shell_escape));
-    git_cmd = git_args.join(" ");
+    wsl_cmd = wsl_args.join(" ");
 
     if use_interactive_shell() {
         cmd_args.push("bash".to_string());
         cmd_args.push("-ic".to_string());
-        cmd_args.push(git_cmd.clone());
+        cmd_args.push(wsl_cmd.clone());
     }
     else {
-        cmd_args.clone_from(&git_args);
+        cmd_args.clone_from(&wsl_args);
     }
 
     // setup stdin/stdout
-    let stdin_mode = if git_cmd.ends_with("--version") {
+    let stdin_mode = if wsl_cmd.ends_with("--version") {
         // For some reason, the git subprocess seems to hang, waiting for 
         // input, when VS Code 1.17.2 tries to detect if `git --version` works
         // on Windows 10 1709 (specifically, in `findSpecificGit` in the
@@ -110,43 +110,43 @@ fn main() {
         Stdio::inherit()
     };
 
-    // setup the git subprocess launched inside WSL
-    let mut git_proc_setup = Command::new("wsl");
-    git_proc_setup.args(&cmd_args)
+    // setup the wsl subprocess launched inside WSL
+    let mut wsl_proc_setup = Command::new("wsl");
+    wsl_proc_setup.args(&cmd_args)
         .stdin(stdin_mode);
     let status;
 
     // add git commands that must use translate_path_to_win
     const TRANSLATED_CMDS: &[&str] = &["rev-parse", "remote"];
 
-    let have_args = git_args.len() > 1;
+    let have_args = wsl_args.len() > 1;
     let translate_output = if have_args {
-       TRANSLATED_CMDS.iter().position(|&r| r == git_args[1]).is_some()
+       TRANSLATED_CMDS.iter().position(|&r| r == wsl_args[1]).is_some()
     } else {
         false
     };
 
     if translate_output {
         // run the subprocess and capture its output
-        let git_proc = git_proc_setup.stdout(Stdio::piped())
+        let wsl_proc = wsl_proc_setup.stdout(Stdio::piped())
             .spawn()
-            .expect(&format!("Failed to execute command '{}'", &git_cmd));
-        let output = git_proc
+            .expect(&format!("Failed to execute command '{}'", &wsl_cmd));
+        let output = wsl_proc
             .wait_with_output()
-            .expect(&format!("Failed to wait for git call '{}'", &git_cmd));
+            .expect(&format!("Failed to wait for wsl call '{}'", &wsl_cmd));
         status = output.status;
         let output_bytes = output.stdout;
         let mut stdout = io::stdout();
         stdout
             .write_all(&translate_path_to_win(&output_bytes))
-            .expect("Failed to write git output");
+            .expect("Failed to write wsl output");
         stdout.flush().expect("Failed to flush output");
     }
     else {
         // run the subprocess without capturing its output
         // the output of the subprocess is passed through unchanged
-        status = git_proc_setup.status()
-            .expect(&format!("Failed to execute command '{}'", &git_cmd));
+        status = wsl_proc_setup.status()
+            .expect(&format!("Failed to execute command '{}'", &wsl_cmd));
     }
 
     // forward any exit code
