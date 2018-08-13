@@ -3,7 +3,7 @@ The WSL system makes a great convenience of development on Windows.But the integ
 
 The project [wslgit](https://github.com/andy-5/wslgit) makes a dummy exe that trying to receive the arguments and translating all paths from windows type to unix type, and reform these arguments to the real command in wsl .
 
-This shows a way to use wsl application in windows enviroment for ides or code editors. But the project is made for git only. I make a bit change using the file stem name as the real command. And it works!
+This shows a way to use wsl application in windows enviroment for IDEs and code editors. But the project is made for git only. I made a bit change using the file stem name as the real command. And it works!
 
 ## Usage
 
