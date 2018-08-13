@@ -1,5 +1,5 @@
 ## WSLEXE 
-The WSL system make a convenience of development on Windows.But the integretion to IDEs and code editors is not convenient.
+The WSL system makes a great convenience of development on Windows.But the integretion to IDEs and code editors is not convenient.
 
 The project [wslgit](https://github.com/andy-5/wslgit) makes a dummy exe that trying to receive the arguments and translating all paths from windows type to unix type, and reform these arguments to the real command in wsl .
 
