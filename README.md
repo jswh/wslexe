@@ -19,6 +19,9 @@ This shows a way to use wsl application in windows enviroment for IDEs and code 
   - [x] phpstorm
 * php.exe
   - [x] phpstorm
+* git.exe
+  - [x] vscode
+  - [x] powershell
 
 ## Screen shot
 #### python.exe for vscode
