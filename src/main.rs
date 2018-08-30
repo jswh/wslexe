@@ -1,13 +1,13 @@
+use std::borrow::Cow;
 use std::env;
+use std::io::{self, Write};
 use std::path::Path;
 use std::process::{Command, Stdio};
-use std::io::{self, Write};
-use std::borrow::Cow;
 
-#[macro_use] extern crate lazy_static;
+#[macro_use]
+extern crate lazy_static;
 extern crate regex;
 use regex::bytes::Regex;
-
 
 fn translate_path_to_unix(arg: String) -> String {
     if let Some(index) = arg.find(":\\") {
@@ -20,12 +20,12 @@ fn translate_path_to_unix(arg: String) -> String {
             let mut wsl_path = String::from("/mnt/");
             wsl_path.push_str(&drive.to_lowercase().collect::<String>());
             path_chars.next();
-            wsl_path.push_str(&path_chars.map(|c|
-                    match c {
-                        '\\' => '/',
-                        _ => c,
-                    }
-                ).collect::<String>());
+            wsl_path.push_str(&path_chars
+                .map(|c| match c {
+                    '\\' => '/',
+                    _ => c,
+                })
+                .collect::<String>());
             return wsl_path;
         }
     }
@@ -34,9 +34,8 @@ fn translate_path_to_unix(arg: String) -> String {
 
 fn translate_path_to_win(line: &[u8]) -> Cow<[u8]> {
     lazy_static! {
-        static ref WSLPATH_RE: Regex = 
-            Regex::new(r"(?m-u)/mnt/(?P<drive>[A-Za-z])(?P<path>/\S*)")
-                .expect("Failed to compile WSLPATH regex");
+        static ref WSLPATH_RE: Regex = Regex::new(r"(?m-u)/mnt/(?P<drive>[A-Za-z])(?P<path>/\S*)")
+            .expect("Failed to compile WSLPATH regex");
     }
     WSLPATH_RE.replace_all(line, &b"${drive}:${path}"[..])
 }
@@ -45,10 +44,7 @@ fn shell_escape(arg: String) -> String {
     // ToDo: This really only handles arguments with spaces and newlines.
     // More complete shell escaping is required for the general case.
     if arg.contains(" ") {
-        return vec![
-            String::from("\""),
-            arg,
-            String::from("\"")].join("");
+        return vec![String::from("\""), arg, String::from("\"")].join("");
     }
     arg.replace("\n", "$'\n'")
 }
@@ -56,19 +52,23 @@ fn shell_escape(arg: String) -> String {
 fn use_interactive_shell() -> bool {
     // check for explicit environment variable setting
     if let Ok(interactive_flag) = env::var("WSL_USE_INTERACTIVE_SHELL") {
-        if interactive_flag == "false" || interactive_flag == "0" {
+        if interactive_flag == "true" || interactive_flag == "1" {
             return false;
         }
     }
     // check for advanced usage indicated by BASH_ENV and WSLENV=BASH_ENV
     else if env::var("BASH_ENV").is_ok() {
         if let Ok(wslenv) = env::var("WSLENV") {
-            if wslenv.split(':').position(|r| r.eq_ignore_ascii_case("BASH_ENV")).is_some() {
+            if wslenv
+                .split(':')
+                .position(|r| r.eq_ignore_ascii_case("BASH_ENV"))
+                .is_some()
+            {
                 return false;
             }
         }
     }
-    true
+    false
 }
 
 fn main() {
@@ -80,24 +80,26 @@ fn main() {
     let file_stem = path.file_stem().unwrap().to_str().unwrap();
     wsl_args.push(String::from(file_stem));
 
-    // process wsl command arguments   
-    wsl_args.extend(env::args().skip(1)
-        .map(translate_path_to_unix)
-        .map(shell_escape));
+    // process wsl command arguments
+    wsl_args.extend(
+        env::args()
+            .skip(1)
+            .map(translate_path_to_unix)
+            .map(shell_escape),
+    );
     wsl_cmd = wsl_args.join(" ");
 
     if use_interactive_shell() {
         cmd_args.push("bash".to_string());
         cmd_args.push("-ic".to_string());
         cmd_args.push(wsl_cmd.clone());
-    }
-    else {
+    } else {
         cmd_args.clone_from(&wsl_args);
     }
 
     // setup stdin/stdout
     let stdin_mode = if wsl_cmd.ends_with("--version") {
-        // For some reason, the git subprocess seems to hang, waiting for 
+        // For some reason, the git subprocess seems to hang, waiting for
         // input, when VS Code 1.17.2 tries to detect if `git --version` works
         // on Windows 10 1709 (specifically, in `findSpecificGit` in the
         // VS Code source file `extensions/git/src/git.ts`).
@@ -111,9 +113,8 @@ fn main() {
     };
 
     // setup the wsl subprocess launched inside WSL
-    let mut wsl_proc_setup = Command::new("wsl");
-    wsl_proc_setup.args(&cmd_args)
-        .stdin(stdin_mode);
+    let mut wsl_proc_setup = Command::new("wsl.exe");
+    wsl_proc_setup.args(&cmd_args).stdin(stdin_mode);
     let status;
 
     // add git commands that must use translate_path_to_win
@@ -121,14 +122,18 @@ fn main() {
 
     let have_args = wsl_args.len() > 1;
     let translate_output = if have_args {
-       TRANSLATED_CMDS.iter().position(|&r| r == wsl_args[1]).is_some()
+        TRANSLATED_CMDS
+            .iter()
+            .position(|&r| r == wsl_args[1])
+            .is_some()
     } else {
         false
     };
 
     if translate_output {
         // run the subprocess and capture its output
-        let wsl_proc = wsl_proc_setup.stdout(Stdio::piped())
+        let wsl_proc = wsl_proc_setup
+            .stdout(Stdio::piped())
             .spawn()
             .expect(&format!("Failed to execute command '{}'", &wsl_cmd));
         let output = wsl_proc
@@ -141,11 +146,11 @@ fn main() {
             .write_all(&translate_path_to_win(&output_bytes))
             .expect("Failed to write wsl output");
         stdout.flush().expect("Failed to flush output");
-    }
-    else {
+    } else {
         // run the subprocess without capturing its output
         // the output of the subprocess is passed through unchanged
-        status = wsl_proc_setup.status()
+        status = wsl_proc_setup
+            .status()
             .expect(&format!("Failed to execute command '{}'", &wsl_cmd));
     }
 
@@ -155,36 +160,40 @@ fn main() {
     }
 }
 
-
 #[test]
 fn win_to_unix_path_trans() {
     assert_eq!(
         translate_path_to_unix("d:\\test\\file.txt".to_string()),
-        "/mnt/d/test/file.txt");
+        "/mnt/d/test/file.txt"
+    );
     assert_eq!(
         translate_path_to_unix("C:\\Users\\test\\a space.txt".to_string()),
-        "/mnt/c/Users/test/a space.txt");
+        "/mnt/c/Users/test/a space.txt"
+    );
 }
 
 #[test]
 fn unix_to_win_path_trans() {
     assert_eq!(
         &*translate_path_to_win(b"/mnt/d/some path/a file.md"),
-        b"d:/some path/a file.md");
+        b"d:/some path/a file.md"
+    );
     assert_eq!(
         &*translate_path_to_win(b"origin  /mnt/c/path/ (fetch)"),
-        b"origin  c:/path/ (fetch)");
+        b"origin  c:/path/ (fetch)"
+    );
     let multiline = b"mirror  /mnt/c/other/ (fetch)\nmirror  /mnt/c/other/ (push)\n";
     let multiline_result = b"mirror  c:/other/ (fetch)\nmirror  c:/other/ (push)\n";
     assert_eq!(
         &*translate_path_to_win(&multiline[..]),
-        &multiline_result[..]);
+        &multiline_result[..]
+    );
 }
 
 #[test]
 fn no_path_translation() {
     assert_eq!(
         &*translate_path_to_win(b"/mnt/other/file.sh"),
-        b"/mnt/other/file.sh");
+        b"/mnt/other/file.sh"
+    );
 }
-
