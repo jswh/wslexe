@@ -53,7 +53,7 @@ fn use_interactive_shell() -> bool {
     // check for explicit environment variable setting
     if let Ok(interactive_flag) = env::var("WSL_USE_INTERACTIVE_SHELL") {
         if interactive_flag == "true" || interactive_flag == "1" {
-            return false;
+            return true;
         }
     }
     // check for advanced usage indicated by BASH_ENV and WSLENV=BASH_ENV
