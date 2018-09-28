@@ -46,7 +46,8 @@ fn shell_escape(arg: String) -> String {
     if arg.contains(" ") {
         return vec![String::from("\""), arg, String::from("\"")].join("");
     }
-    arg.replace("\n", "$'\n'")
+    arg.replace("\n", "$'\n'");
+    arg.replace(";", "$';'")
 }
 
 fn use_interactive_shell() -> bool {
