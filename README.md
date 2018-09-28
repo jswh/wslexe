@@ -7,7 +7,7 @@ This shows a way to use wsl application in windows enviroment for IDEs and code 
 
 ## Usage
 
-1. download the [wsl.exe](https://github.com/jswh/wslexe/releases/tag/v0.0.1)
+1. download the [wsl.exe](https://github.com/jswh/wslexe/releases)
 2. rename it to the command you want to use, for example pyhon.exe
 3. change your ide or editor config to point to the executable file
 
@@ -19,6 +19,9 @@ This shows a way to use wsl application in windows enviroment for IDEs and code 
   - [x] phpstorm
 * php.exe
   - [x] phpstorm
+* git.exe
+  - [x] vscode
+  - [x] powershell
 
 ## Screen shot
 #### python.exe for vscode

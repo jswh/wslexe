@@ -65,7 +65,7 @@ fn use_interactive_shell() -> bool {
                 .position(|r| r.eq_ignore_ascii_case("BASH_ENV"))
                 .is_some()
             {
-                return false;
+                return true;
             }
         }
     }
