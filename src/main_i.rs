@@ -68,7 +68,9 @@ fn main() {
     );
     wsl_cmd = wsl_args.join(" ");
 
-    cmd_args.clone_from(&wsl_args);
+    cmd_args.push("bash".to_string());
+    cmd_args.push("-ic".to_string());
+    cmd_args.push(wsl_cmd.clone());
 
     // setup stdin/stdout
     let stdin_mode = if wsl_cmd.ends_with("--version") {

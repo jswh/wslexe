@@ -4,6 +4,14 @@ version = "0.7.1"
 authors = ["Andreas Riffnaller-Schiefer <andreas.schiefer@gmail.com>"]
 license = "MIT"
 
+[[bin]]
+name = "wslexe_i"
+path = "./src/main_i.rs"
+
+[[bin]]
+name = "wslexe"
+path = "./src/main.rs"
+
 [dependencies]
 regex = "0.2"
 lazy_static = "1.0"
