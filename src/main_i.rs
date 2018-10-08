@@ -5,5 +5,5 @@ extern crate lazy_static;
 extern crate regex;
 
 fn main() {
-    processor::execute(false)
+    processor::execute(true)
 }
