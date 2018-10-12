@@ -1,4 +1,4 @@
-## WSLEXE 
+## WSLEXE
 The WSL system makes a great convenience of development on Windows.But the integretion to IDEs and code editors is not convenient.
 
 The project [wslgit](https://github.com/andy-5/wslgit) makes a dummy exe that trying to receive the arguments and translating all paths from windows type to unix type, and reform these arguments to the real command in wsl .
@@ -7,9 +7,10 @@ This shows a way to use wsl application in windows enviroment for IDEs and code 
 
 ## Usage
 
-1. download the [wsl.exe](https://github.com/jswh/wslexe/releases)
+1. download the [wslexe.exe](https://github.com/jswh/wslexe/releases)
 2. rename it to the command you want to use, for example pyhon.exe
 3. change your ide or editor config to point to the executable file
+4. if you have a ".wslexerc" in the path where the executable file exists, it will be sourced before the real command
 
 ## Compatibility
 * python.exe
