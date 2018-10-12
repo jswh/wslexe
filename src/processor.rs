@@ -48,6 +48,10 @@ fn shell_escape(arg: String) -> String {
     arg.replace(";", "$';'")
 }
 pub fn execute(interactive: bool) {
+    let mut exe_path = env::current_exe().unwrap();
+    exe_path.pop();
+    let wslexerc_path = format!("{}\\.wslexerc", exe_path.display());
+
     let mut cmd_args = Vec::new();
     let mut wsl_args: Vec<String> = vec![];
     let wsl_cmd: String;
@@ -63,14 +67,24 @@ pub fn execute(interactive: bool) {
             .map(translate_path_to_unix)
             .map(shell_escape),
     );
-    wsl_cmd = wsl_args.join(" ");
-    if interactive {
-        cmd_args.push("bash".to_string());
-        cmd_args.push("-ic".to_string());
-        cmd_args.push(wsl_cmd.clone());
+    if Path::new(&wslexerc_path).exists() {
+        wsl_cmd = format!(
+            "source {};{}",
+            translate_path_to_unix(wslexerc_path),
+            wsl_args.join(" ")
+        );
     } else {
-        cmd_args.clone_from(&wsl_args);
+        wsl_cmd = wsl_args.join(" ");
     }
+    let exe_cmd: String;
+    if interactive {
+        exe_cmd = "-ic".to_string();
+    } else {
+        exe_cmd = "-c".to_string();
+    }
+    cmd_args.push("bash".to_string());
+    cmd_args.push(exe_cmd);
+    cmd_args.push(wsl_cmd.clone());
 
     // setup stdin/stdout
     let stdin_mode = if wsl_cmd.ends_with("--version") {
