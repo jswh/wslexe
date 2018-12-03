@@ -1,33 +1,65 @@
 use std::borrow::Cow;
 use std::env;
 use std::io::{self, Write};
-use std::path::Path;
+use std::path::{Component, Path, Prefix, PrefixComponent};
 use std::process;
 use std::process::{Command, Stdio};
 
 use regex::bytes::Regex;
 
-fn translate_path_to_unix(arg: String) -> String {
-    if let Some(index) = arg.find(":\\") {
-        if index != 1 {
-            // Not a path
-            return arg;
-        }
-        let mut path_chars = arg.chars();
-        if let Some(drive) = path_chars.next() {
-            let mut wsl_path = String::from("/mnt/");
-            wsl_path.push_str(&drive.to_lowercase().collect::<String>());
-            path_chars.next();
-            wsl_path.push_str(&path_chars
-                .map(|c| match c {
-                    '\\' => '/',
-                    _ => c,
-                })
-                .collect::<String>());
-            return wsl_path;
+fn get_drive_letter(pc: &PrefixComponent) -> Option<String> {
+    let drive_byte = match pc.kind() {
+        Prefix::VerbatimDisk(d) => Some(d),
+        Prefix::Disk(d) => Some(d),
+        _ => None,
+    };
+    drive_byte.map(|drive_letter| {
+        String::from_utf8(vec![drive_letter])
+            .expect(&format!("Invalid drive letter: {}", drive_letter))
+            .to_lowercase()
+    })
+}
+
+fn get_prefix_for_drive(drive: &str) -> String {
+    // todo - lookup mount points
+    format!("/mnt/{}", drive)
+}
+
+fn translate_path_to_unix(argument: String) -> String {
+    {
+        let (argname, arg) = if argument.starts_with("--") && argument.contains('=') {
+            let parts: Vec<&str> = argument.splitn(2, '=').collect();
+            (format!("{}=", parts[0]), parts[1])
+        } else {
+            ("".to_owned(), argument.as_ref())
+        };
+        let win_path = Path::new(arg);
+        if win_path.is_absolute() || win_path.exists() {
+            let wsl_path: String = win_path.components().fold(String::new(), |mut acc, c| {
+                match c {
+                    Component::Prefix(prefix_comp) => {
+                        let d = get_drive_letter(&prefix_comp)
+                            .expect(&format!("Cannot handle path {:?}", win_path));
+                        acc.push_str(&get_prefix_for_drive(&d));
+                    }
+                    Component::RootDir => {}
+                    _ => {
+                        let d = c.as_os_str()
+                            .to_str()
+                            .expect(&format!("Cannot represent path {:?}", win_path))
+                            .to_owned();
+                        if !acc.is_empty() && !acc.ends_with('/') {
+                            acc.push('/');
+                        }
+                        acc.push_str(&d);
+                    }
+                };
+                acc
+            });
+            return format!("{}{}", &argname, &wsl_path);
         }
     }
-    arg
+    argument
 }
 
 fn translate_path_to_win(line: &[u8]) -> Cow<[u8]> {
@@ -54,6 +86,7 @@ pub fn execute(interactive: bool) {
 
     let mut cmd_args = Vec::new();
     let mut wsl_args: Vec<String> = vec![];
+
     let wsl_cmd: String;
     let exe: String = env::args().next().unwrap();
     let path = Path::new(&exe);
@@ -61,17 +94,13 @@ pub fn execute(interactive: bool) {
     wsl_args.push(String::from(file_stem));
 
     // process wsl command arguments
-    wsl_args.extend(
-        env::args()
-            .skip(1)
-            .map(translate_path_to_unix)
-            .map(shell_escape),
-    );
+    wsl_args.extend(env::args().skip(1).map(translate_path_to_unix));
+
     if Path::new(&wslexerc_path).exists() {
         wsl_cmd = format!(
             "source {};{}",
             translate_path_to_unix(wslexerc_path),
-            wsl_args.join(" ")
+            interactive ? wsl_args.join(" ") : wsl_args.into_iter().map(shell_escape).collect::<Vec<String>>().join(" ");
         );
     } else {
         wsl_cmd = wsl_args.join(" ");
@@ -109,15 +138,15 @@ pub fn execute(interactive: bool) {
     // add git commands that must use translate_path_to_win
     const TRANSLATED_CMDS: &[&str] = &["rev-parse", "remote"];
 
-    let have_args = wsl_args.len() > 1;
-    let translate_output = if have_args {
-        TRANSLATED_CMDS
-            .iter()
-            .position(|&r| r == wsl_args[1])
-            .is_some()
-    } else {
-        false
-    };
+    let translate_output = env::args()
+        .skip(1)
+        .position(|arg| {
+            TRANSLATED_CMDS
+                .iter()
+                .position(|&tcmd| tcmd == arg)
+                .is_some()
+        })
+        .is_some();
 
     if translate_output {
         // run the subprocess and capture its output
@@ -184,5 +213,21 @@ fn no_path_translation() {
     assert_eq!(
         &*translate_path_to_win(b"/mnt/other/file.sh"),
         b"/mnt/other/file.sh"
+    );
+}
+
+#[test]
+fn relative_path_translation() {
+    assert_eq!(
+        translate_path_to_unix(".\\src\\main.rs".to_string()),
+        "./src/main.rs"
+    );
+}
+
+#[test]
+fn long_argument_path_translation() {
+    assert_eq!(
+        translate_path_to_unix("--file=C:\\some\\path.txt".to_owned()),
+        "--file=/mnt/c/some/path.txt"
     );
 }
