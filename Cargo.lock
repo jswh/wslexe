@@ -78,7 +78,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "wslexe"
-version = "0.8.0"
+version = "0.8.1"
 dependencies = [
  "lazy_static 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
