@@ -100,7 +100,7 @@ pub fn execute(interactive: bool) {
         wsl_cmd = format!(
             "source {};{}",
             translate_path_to_unix(wslexerc_path),
-            interactive ? wsl_args.join(" ") : wsl_args.into_iter().map(shell_escape).collect::<Vec<String>>().join(" ");
+            if interactive { wsl_args.join(" ") }else{ wsl_args.into_iter().map(shell_escape).collect::<Vec<String>>().join(" ")}
         );
     } else {
         wsl_cmd = wsl_args.join(" ");
